@@ -1,0 +1,26 @@
+name: fastercode optimisation runner
+on:
+  workflow_dispatch:
+permissions:
+  id-token: write
+jobs:
+  run:
+    runs-on: ubuntu-latest   # or: self-hosted, if you've registered your own
+    steps:
+      - name: Get fastercode OIDC token
+        id: oidc
+        run: |
+          TOKEN=$(curl -sH "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=fastercode.ai" \
+            | python3 -c "import sys,json;print(json.load(sys.stdin)['value'])")
+          echo "::add-mask::$TOKEN"
+          echo "token=$TOKEN" >> "$GITHUB_OUTPUT"
+      - name: Run fastercode runner agent
+        env:
+          FASTERCODE_SAAS_BACKEND_URL: "https://beta.app.fastercode.ai"
+          FASTERCODE_RUNNER_ID: "24"
+          FASTERCODE_RUNNER_OIDC_TOKEN: ${{ steps.oidc.outputs.token }}
+          FASTERCODE_RUNNER_ONCE: "1"
+        run: |
+          pip install fastercode-runner
+          fastercode-runner-agent
